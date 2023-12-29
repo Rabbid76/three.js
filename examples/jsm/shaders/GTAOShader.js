@@ -48,6 +48,7 @@ const GTAOShader = {
 		SCREEN_SPACE_RADIUS: 0,
 		SCREEN_SPACE_RADIUS_SCALE: 100.0,
 		SCENE_CLIP_BOX: 0,
+		BENT_NORMAL: 0,
 	},
 
 	uniforms: {
@@ -103,7 +104,11 @@ const GTAOShader = {
 		#include <packing>
 
 		#ifndef FRAGMENT_OUTPUT
+		#if BENT_NORMAL == 1
+		#define FRAGMENT_OUTPUT vec4(normalize(bentNormal.xyz), ao)
+		#else
 		#define FRAGMENT_OUTPUT vec4(vec3(ao), 1.)
+		#endif
 		#endif
 
 		vec3 getViewPosition(const in vec2 screenPosition, const in float depth) {
@@ -204,6 +209,9 @@ const GTAOShader = {
 			const int DIRECTIONS = SAMPLES < 30 ? 3 : 5;
 			const int STEPS = (SAMPLES + DIRECTIONS - 1) / DIRECTIONS;
 			float ao = 0.0, totalWeight = 0.0;
+			#if BENT_NORMAL == 1
+				vec3 bentNormal = vec3(0.);
+			#endif
 			for (int i = 0; i < DIRECTIONS; ++i) {
 				
 				float angle = float(i) / float(DIRECTIONS) * PI;
@@ -245,6 +253,9 @@ const GTAOShader = {
 				float nyb = 1. / 2. * (2. - cosHorizons.x * cosHorizons.x - cosHorizons.y * cosHorizons.y);
 				float occlusion = nx * nxb + ny * nyb;
 				ao += occlusion;
+				#if BENT_NORMAL == 1
+					bentNormal += nxb * sliceTangent + nyb * viewDir;
+				#endif
 			}
 
 			ao = clamp(ao / float(DIRECTIONS), 0., 1.);		
@@ -315,6 +326,10 @@ const GTAOBlendShader = {
 		intensity: { value: 1.0 }
 	},
 
+	defines: {
+		BLEND_MODE: 0
+	},
+
 	vertexShader: /* glsl */`
 		varying vec2 vUv;
 
@@ -330,7 +345,13 @@ const GTAOBlendShader = {
 
 		void main() {
 			vec4 texel = texture2D( tDiffuse, vUv );
-			gl_FragColor = vec4(mix(vec3(1.), texel.rgb, intensity), texel.a);
+			#if BLEND_MODE == 2
+				gl_FragColor = vec4(mix(vec3(1.), texel.rgb * 0.5 + 0.5, intensity), 1.);
+			#elif BLEND_MODE == 1
+				gl_FragColor = vec4(mix(vec3(1.), texel.aaa, intensity), 1.);
+			#else
+				gl_FragColor = vec4(mix(vec3(1.), texel.rgb, intensity), texel.a);
+			#endif
 		}`
 
 };

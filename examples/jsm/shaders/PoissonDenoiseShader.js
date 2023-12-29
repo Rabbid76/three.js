@@ -64,14 +64,14 @@ const PoissonDenoiseShader = {
 		#include <packing>
 
 		#ifndef SAMPLE_LUMINANCE
-		#define SAMPLE_LUMINANCE dot(vec3(0.2125, 0.7154, 0.0721), a)
+		#define SAMPLE_LUMINANCE dot(vec3(0.2125, 0.7154, 0.0721), a.rgb)
 		#endif
 
 		#ifndef FRAGMENT_OUTPUT
-		#define FRAGMENT_OUTPUT vec4(denoised, 1.)
+		#define FRAGMENT_OUTPUT vec4(denoised.rgb, 1.)
 		#endif
 
-		float getLuminance(const in vec3 a) {
+		float getLuminance(const in vec4 a) {
 			return SAMPLE_LUMINANCE;
 		}
 
@@ -133,11 +133,11 @@ const PoissonDenoiseShader = {
 		#endif
 		}
 
-		void denoiseSample(in vec3 center, in vec3 viewNormal, in vec3 viewPos, in vec2 sampleUv, inout vec3 denoised, inout float totalWeight) {
+		void denoiseSample(in vec4 center, in vec3 viewNormal, in vec3 viewPos, in vec2 sampleUv, inout vec4 denoised, inout float totalWeight) {
 			vec4 sampleTexel = textureLod(tDiffuse, sampleUv, 0.0);
 			float sampleDepth = getDepth(sampleUv);
 			vec3 sampleNormal = getViewNormal(sampleUv);
-			vec3 neighborColor = sampleTexel.rgb;
+			vec4 neighborColor = sampleTexel.rgba;
 			vec3 viewPosSample = getViewPosition(sampleUv, sampleDepth);
 			
 			float normalDiff = dot(viewNormal, sampleNormal);
@@ -160,7 +160,7 @@ const PoissonDenoiseShader = {
 				return;
 			}
 			vec4 texel = textureLod(tDiffuse, vUv, 0.0);
-			vec3 center = texel.rgb;
+			vec4 center = texel.rgba;
 			vec3 viewPos = getViewPosition(vUv, depth);
 
 			vec2 noiseResolution = vec2(textureSize(tNoise, 0));
@@ -170,7 +170,7 @@ const PoissonDenoiseShader = {
     		mat2 rotationMatrix = mat2(noiseVec.x, -noiseVec.y, noiseVec.x, noiseVec.y);
 		
 			float totalWeight = 1.0;
-			vec3 denoised = texel.rgb;
+			vec4 denoised = texel.rgba;
 			for (int i = 0; i < SAMPLES; i++) {
 				vec3 sampleDir = poissonDisk[i];
 				vec2 offset = rotationMatrix * (sampleDir.xy * (1. + sampleDir.z * (radius - 1.)) / resolution);
