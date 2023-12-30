@@ -2,7 +2,9 @@
 *.swp
 .project
 .idea/
-.vscode/
+.vscode/**/*.*
+!.vscode/extensions.json
+
 npm-debug.log
 .jshintrc
 .vs/
